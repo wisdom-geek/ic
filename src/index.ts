@@ -103,7 +103,7 @@ globalThis.crypto = {
 
 // Feedback statement addressing housing challenges and introducing "Nyumba Blockchain"
 const feedbackStatement = `
-Addressing challenges in housing: funding, transparency, and centralized processes. "Nyumba Blockchain" introduces tokenization for fractional ownership, automates tasks via smart contracts, and fosters a decentralized and transparent real estate system.
+Addressing challenges in housing: funding, transparency, and centralized processes. "Nyumba Blockchain" introduces tokenization for fractional ownership, automates tasks via smart contracts, and fosters a decentralized and transparent real estate system in Kenya.
 `;
 
 // Log the feedback statement to the console
