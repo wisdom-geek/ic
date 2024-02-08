@@ -1,5 +1,5 @@
 // Import necessary modules and libraries
-import { $query, $update, Record, StableBTreeMap, Vec, match, Result, nat64, ic, Opt } from 'azle';
+import { $query, $update, Record, StableBTreeMap, Vec, match, Result, nat64, ic, Opt, Variant, text } from 'azle';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -23,6 +23,20 @@ type MessagePayload = Record<{
 // Create a stable B-tree map to store messages
 const messageStorage = new StableBTreeMap<string, Message>(0, 44, 1024);
 
+const Errors = Variant({
+    HousingMessageDoesNotExist: text
+});
+
+function createHousingMessage(payload: MessagePayload): HousingMessage {
+    return {
+        id: uuidv4(),
+        createdAt: ic.time(),
+        updatedAt: Opt.None,
+        blockchainFeatures: [],
+        ...payload
+    };
+}
+
 // Define the new housing-related message structure
 type HousingMessage = Record<{
     id: string; // Unique identifier for the housing message
@@ -38,52 +52,46 @@ type HousingMessage = Record<{
 
 // Query function to get all housing messages
 $query;
-export function getHousingMessages(): Result<Vec<HousingMessage>, string> {
+export function getHousingMessages(): Result(Vec<HousingMessage>, Errors) {
     return Result.Ok(messageStorage.values());
 }
 
 // Query function to get a specific housing message by ID
 $query;
-export function getHousingMessage(id: string): Result<HousingMessage, string> {
+export function getHousingMessage(id: string): Result(HousingMessage, Errors) {
     return match(messageStorage.get(id), {
         Some: (message) => Result.Ok<HousingMessage, string>({ ...message, blockchainFeatures: [] }),
-        None: () => Result.Err<HousingMessage, string>(`A message with id=${id} not found`)
+        None: () => Result.Err({HousingMessageDoesNotExist: `A message with id=${id} not found`})
     });
 }
 
 // Update function to add a new housing message
 $update;
 export function addHousingMessage(payload: MessagePayload): Result<HousingMessage, string> {
-    const message: HousingMessage = {
-        id: uuidv4(), // Generate a unique ID for the housing message
-        createdAt: ic.time(), // Set the creation timestamp for the housing message
-        updatedAt: Opt.None, // Initialize the optional update timestamp as None
-        blockchainFeatures: [], // Initialize blockchain features as an empty array
-        ...payload // Include payload properties in the housing message
-    };
+    const message = createHousingMessage(payload);
     messageStorage.insert(message.id, message); // Insert the housing message into the storage
     return Result.Ok(message); // Return a successful result with the created housing message
 }
 
 // Update function to modify an existing housing message
 $update;
-export function updateHousingMessage(id: string, payload: MessagePayload): Result<HousingMessage, string> {
+export function updateHousingMessage(id: string, payload: MessagePayload): Result(HousingMessage, Errors) {
     return match(messageStorage.get(id), {
         Some: (message) => {
-            const updatedMessage: HousingMessage = { ...message, ...payload, updatedAt: Opt.Some(ic.time()), blockchainFeatures: [] };
+            const updatedMessage: HousingMessage = createHousingMessage({ ...message, ...payload, updatedAt: Opt.Some(ic.time()) });
             messageStorage.insert(message.id, updatedMessage);
             return Result.Ok<HousingMessage, string>(updatedMessage);
         },
-        None: () => Result.Err<HousingMessage, string>(`Couldn't update a message with id=${id}. Message not found`)
+        None: () => Result.Err({HousingMessageDoesNotExist: `Couldn't update a message with id=${id}. Message not found`})
     });
 }
 
 // Update function to delete a housing message
 $update;
-export function deleteHousingMessage(id: string): Result<HousingMessage, string> {
+export function deleteHousingMessage(id: string): Result(HousingMessage, Errors) {
     return match(messageStorage.remove(id), {
         Some: (deletedMessage) => Result.Ok<HousingMessage, string>(deletedMessage),
-        None: () => Result.Err<HousingMessage, string>(`Couldn't delete a message with id=${id}. Message not found.`)
+        None: () => Result.Err({HousingMessageDoesNotExist: `Couldn't delete a message with id=${id}. Message not found.`})
     });
 }
 
@@ -105,6 +113,3 @@ globalThis.crypto = {
 const feedbackStatement = `
 Addressing challenges in housing: funding, transparency, and centralized processes. "Nyumba Blockchain" introduces tokenization for fractional ownership, automates tasks via smart contracts, and fosters a decentralized and transparent real estate system.
 `;
-
-// Log the feedback statement to the console
-console.log(feedbackStatement);
